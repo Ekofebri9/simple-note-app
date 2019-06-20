@@ -9,30 +9,91 @@ exports.index = function(req, res, next ){
 };
 
 exports.getAllNote = function(req, res){
+    let idNote = req.params.idNote;
+    let search = req.query.search || null;
+    let sort = req.query.sort || 'desc';
+    let pages = req.query.page;
+    let limit = parseInt(req.query.limit) || 10 ;
+    let data = [];
+    let offset = 0
+    let totalRows = 0;
+    let totalPages = 0;
+    let query = '';
+    let queryCount = '';
+
+    if(pages == null || pages == 0){
+        pages = 0;
+    } else {
+        pages = parseInt(pages)-1;
+    }
+
+    offset = pages*limit ;
+
+    if(idNote != null){
+        query = `SELECT note.id_note, note.title, note.content, note.date,
+        note.date_update, category.category_name as category 
+        FROM note LEFT OUTER JOIN category ON note.id_category=category.id_category
+        where note.id_note=${idNote}`
+    } else if(search == null){
+        query = `SELECT note.id_note, note.title, note.content, note.date,
+        note.date_update, category.category_name as category 
+        FROM note LEFT OUTER JOIN category ON note.id_category=category.id_category 
+        order by note.title ${sort} limit ${limit} offset ${offset}` ;
+        queryCount = `SELECT COUNT(*) as total FROM note`;
+    } else {
+        query = `SELECT note.id_note, note.title, note.content, note.date,
+        note.date_update, category.category_name as category 
+        FROM note LEFT OUTER JOIN category ON note.id_category=category.id_category
+        where note.title like '%${search}%' order by note.date ${sort} limit ${limit} offset ${offset} ` ;
+        queryCount = `SELECT COUNT(*) as total FROM note where title like '%${search}%'`
+    }
+    
     connection.query(
-        `SELECT note.id_note, note.title, note.content, note.date, note.date_update, category.category_name as category 
-        FROM note LEFT OUTER JOIN category ON note.id_category=category.id_category`,
+        queryCount,
+        function(error, rows, field){
+            if(error){
+                throw error;
+            }else {
+                totalRows = rows[0].total;
+                totalPages = parseInt(totalRows/limit)+1;
+            }
+        }    
+    );
+    connection.query(
+        query,
         function(error, rows, field){
             if(error){
                 throw error;
             }else if(rows.length != 0){
-                let end=rows.length;
+                let end = rows.length;
                 for(let i = 0; i < end; i++){
                     let obj = rows[i];
                     if(obj.category === null) obj.category = 'There is no category';
                 }
-                response.success(rows, res);
+                data[0] = 200;
+                data[1] = rows;
+                data[2] = totalRows;
+                data[3] = pages+1;
+                data[4] = totalPages;
+                data[5] = limit;
+                response.successPage(data, res);
             } else { 
                 response.success( 'There is no data' , res);
             }
         }    
     );
-    
 }
 
 exports.getAllCategory = function(req, res){
+    let idCategory = req.params.idCategory;
+    let query = '';
+    if (idCategory == null){
+        query = `SELECT * FROM category`;
+    } else {
+        query = `SELECT * FROM category where id_category=${idCategory}`;
+    }
     connection.query(
-        `SELECT * FROM category`,
+        query,
         function(error, rows, field){
             if(error){
                 throw error;
@@ -44,37 +105,6 @@ exports.getAllCategory = function(req, res){
         }    
     );
 }
-
-exports.getNoteById = function(req, res) {
-    let idNote = req.params.idNote;
-    connection.query(`SELECT * FROM note where id_note=?`,
-    [ idNote ], 
-    function (error, rows, fields){
-        if(error){
-            throw error;
-        }else if(rows.length != 0){
-            response.success(rows, res);
-        } else { 
-            response.success( 'There is no data' , res);
-        }
-    });
-};
-
-exports.getCategoryById = function(req, res) {
-    let idCategory = req.params.idCategory;
-    connection.query(
-    `SELECT * FROM category where id_category=?`,
-    [ idCategory ], 
-    function (error, rows, fields){
-        if(error){
-            throw error;
-        }else if(rows.length != 0){
-            response.success(rows, res);
-        } else { 
-            response.success( 'There is no data' , res );
-        }
-    });
-};
 
 exports.postNote = function(req, res){
     let title = req.body.title;
@@ -84,7 +114,7 @@ exports.postNote = function(req, res){
     if(title == null || content == null || idCategory == null){
         res.send({
             error: true,
-            message: "fields of title or content or id_catagory aren't empety(null)"
+            message: "fields of title or content or id_catagory must be not empty"
         })
     } else {
     connection.query(
@@ -111,7 +141,7 @@ exports.postCategory = function(req, res){
     if(categoryName == null){
         res.send({
             error: true,
-            message: "field of category_name isn't empety(null)"
+            message: "field of category_name must be not empty"
         })
     } else {
     connection.query(
@@ -141,7 +171,7 @@ exports.putNote = function (req, res){
     if(title == null || content == null || idCategory == null || dateUpdate == null || idNote == null){
         res.send({
             error: true,
-            message: "fields of title or content or id_ctg aren't empety(null)"
+            message: "fields of title or content or id_ctg aren't empty"
         })
     } else {
     connection.query(
@@ -172,7 +202,7 @@ exports.putCategory = function (req, res){
     if(idCategory == null || categoryName == null || dateUpdate == null){
         res.send({
             error: true,
-            message: "fields of catagory_name or id_category aren't empety(null)"
+            message: "fields of catagory_name or id_category aren't empty"
         })
     } else {
     connection.query(
@@ -201,7 +231,7 @@ exports.deleteNote = function(req, res) {
     if (idNote == null){
         res.send({
             error: true,
-            message: "field id_note aren't empety(null)"
+            message: "field id_note must be not empty"
         })
     } else {
     connection.query('DELETE FROM note WHERE id_note=?',
@@ -224,7 +254,7 @@ exports.deleteCategory = function(req, res) {
     if (idCategory == null){
         res.send({
             error: true,
-            message: "fields of id_category aren't empety(null)"
+            message: "fields of id_category must be not empety"
         })
     } else {
     connection.query(

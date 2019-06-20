@@ -18,7 +18,7 @@ var corsOptions = {
         }
       },
     credentials: true,
-    methods:['GET', 'PUT', 'POST', 'DELETE']
+    methods:['GET', 'PUT', 'PATCH', 'POST', 'DELETE']
   };
 //application.use(cors(corsOptions)); //simple use CORS
 
@@ -27,7 +27,7 @@ application.use(
     console.log('Request URL:', req.originalUrl);
     console.log('Request Type:', req.method);
     console.log('port', port);
-    next()
+    next();
   }
 );
 
