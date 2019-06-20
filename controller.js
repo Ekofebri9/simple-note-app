@@ -55,7 +55,7 @@ exports.getAllNote = function(req, res){
                 throw error;
             }else {
                 totalRows = rows[0].total;
-                totalPages = parseInt(totalRows/limit)+1;
+                totalPages = Math.ceil(totalRows/limit);
             }
         }    
     );
