@@ -15,7 +15,7 @@ exports.getAllNote = function(req, res){
     let pages = req.query.page;
     let limit = parseInt(req.query.limit) || 10 ;
     let data = [];
-    let offset = 0
+    let offset = 0;
     let totalRows = 0;
     let totalPages = 0;
     let query = '';
@@ -34,6 +34,7 @@ exports.getAllNote = function(req, res){
         note.date_update, category.category_name as category 
         FROM note LEFT OUTER JOIN category ON note.id_category=category.id_category
         where note.id_note=${idNote}`
+        queryCount = `SELECT COUNT(*) as total FROM note where id_note=${idNote}`;
     } else if(search == null){
         query = `SELECT note.id_note, note.title, note.content, note.date,
         note.date_update, category.category_name as category 
@@ -126,8 +127,8 @@ exports.postNote = function(req, res){
             } else {
                 return res.send({
                     error: false,
+                    message: 'success to save data',
                     data: rows,
-                    message: 'data berhasil di simpan'
                 })
             }
         }
@@ -153,8 +154,8 @@ exports.postCategory = function(req, res){
             } else {
                 return res.send({
                     error: false,
-                    data: rows,
-                    message: 'data berhasil di simpan'
+                    message: 'success to save data',
+                    data: rows
                 })
             }
         }
@@ -168,15 +169,30 @@ exports.putNote = function (req, res){
     let content = req.body.content;
     let idCategory = req.body.id_category;
     let dateUpdate = new Date();
-    if(title == null || content == null || idCategory == null || dateUpdate == null || idNote == null){
+    let query = `UPDATE note SET` ;
+    let params= [];
+    if(idNote == null){
         res.send({
             error: true,
-            message: "fields of title or content or id_ctg aren't empty"
+            message: "id_note is empty"
         })
-    } else {
+    } else if(title != null){
+        query += ` title=?,` ;
+        params.push(title);
+    } else if(content != null) {
+        query += ` content=?,` ;
+        params.push(content);
+    } else if(idCategory != null) {
+        query += ` id_category=?,` ;
+        params.push(parseInt(idCategory));
+    } 
+    params.push(dateUpdate);
+    params.push(parseInt(idNote));
     connection.query(
-        `UPDATE note SET title=?, content=?, date_update=?, id_category=? WHERE id_note=?`,
-        [title, content, dateUpdate, idCategory, idNote],
+        //`UPDATE note SET title=?, content=?, date_update=?, id_category=? WHERE id_note=?`,
+        query+` date_update=? WHERE id_note=? `,
+        //[title, content, dateUpdate, idCategory, idNote],
+        params,
         function(error, rows, field){
             if(error){
                 throw error;
@@ -192,7 +208,6 @@ exports.putNote = function (req, res){
             }
         }
         );
-    }
 }
 
 exports.putCategory = function (req, res){
